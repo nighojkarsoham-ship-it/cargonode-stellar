@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import pool from "./db/index.js";
 import shipmentsRouter from "./routes/shipments.js";
 import { logger } from "./lib/logger.js";
 
@@ -79,8 +82,22 @@ app.use(
 
 // --- Start ---
 
-app.listen(PORT, () => {
-  log.info(`CargoNode API running on port ${PORT}`);
-  log.info(`Network: ${process.env.STELLAR_NETWORK || "testnet"}`);
-  log.info(`CORS origins: ${allowedOrigins.join(", ")}`);
-});
+async function start() {
+  // Auto-migrate: run schema.sql on startup
+  try {
+    const schemaPath = path.join(__dirname, "db/schema.sql");
+    const schema = fs.readFileSync(schemaPath, "utf-8");
+    await pool.query(schema);
+    log.info("Database migration completed");
+  } catch (err: any) {
+    log.error({ err: err.message }, "Migration failed — tables may already exist");
+  }
+
+  app.listen(PORT, () => {
+    log.info(`CargoNode API running on port ${PORT}`);
+    log.info(`Network: ${process.env.STELLAR_NETWORK || "testnet"}`);
+    log.info(`CORS origins: ${allowedOrigins.join(", ")}`);
+  });
+}
+
+start();
