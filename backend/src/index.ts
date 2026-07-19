@@ -62,6 +62,19 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// Debug: test DB connection and tables
+app.get("/api/debug", async (_req, res) => {
+  try {
+    const tables = await pool.query(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+    );
+    const dbUrl = process.env.DATABASE_URL ? "set (hidden)" : "NOT SET";
+    res.json({ db: dbUrl, tables: tables.rows });
+  } catch (err: any) {
+    res.json({ error: err.message, db: process.env.DATABASE_URL ? "set" : "NOT SET" });
+  }
+});
+
 app.use("/api/shipments", shipmentsRouter);
 
 // --- Error Handler ---
