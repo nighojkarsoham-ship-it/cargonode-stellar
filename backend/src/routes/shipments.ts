@@ -12,7 +12,7 @@ import {
   toStringScVal,
 } from "../lib/stellar.js";
 import * as StellarSdk from "@stellar/stellar-sdk";
-import { logger } from "../index.js";
+import { logger } from "../lib/logger.js";
 
 const log = logger.child({ module: "shipments" });
 const router = Router();
