@@ -90,17 +90,21 @@ export default function ShipmentDetailPage() {
         }
       }
 
-      setStatus("Please sign in your wallet...");
-      const signedXdr = await sign(xdr);
+      if (xdr) {
+        setStatus("Please sign in your wallet...");
+        const signedXdr = await sign(xdr);
 
-      setStatus("Submitting transaction...");
-      const submitStatus =
-        action === "accept" ? "accepted"
-        : action === "confirm" ? "confirmed"
-        : "cancelled";
-      await submitSignedTx(shipmentId, signedXdr, submitStatus);
+        setStatus("Submitting transaction...");
+        const submitStatus =
+          action === "accept" ? "accepted"
+          : action === "confirm" ? "confirmed"
+          : "cancelled";
+        await submitSignedTx(shipmentId, signedXdr, submitStatus);
+        setStatus(`${action} successful!`);
+      } else {
+        setStatus(`${action} successful! (Demo mode — no on-chain transaction)`);
+      }
 
-      setStatus(`${action} successful!`);
       await loadShipment();
     } catch (err: any) {
       setStatus(`Error: ${err.message}`);
