@@ -138,7 +138,11 @@ async function start() {
     `CREATE INDEX IF NOT EXISTS idx_shipments_shipper ON shipments(shipper_id)`,
     `CREATE INDEX IF NOT EXISTS idx_shipments_driver ON shipments(driver_id)`,
     `CREATE INDEX IF NOT EXISTS idx_shipments_status ON shipments(status)`,
+    `CREATE INDEX IF NOT EXISTS idx_shipments_created_at ON shipments(created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_shipments_shipper_status ON shipments(shipper_id, status)`,
+    `CREATE INDEX IF NOT EXISTS idx_shipments_driver_status ON shipments(driver_id, status)`,
     `CREATE INDEX IF NOT EXISTS idx_users_stellar ON users(stellar_address)`,
+    `CREATE INDEX IF NOT EXISTS idx_shipments_history_shipment ON shipments_history(shipment_id)`,
   ];
 
   try {

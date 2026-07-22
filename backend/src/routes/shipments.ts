@@ -88,7 +88,7 @@ function parseAmountToBigInt(amountStr: string): bigint {
 // List shipments for a user (requires address filter)
 router.get("/", readRateLimit, async (req, res) => {
   try {
-    const { address, role } = req.query;
+    const { address, role, cursor, limit: limitStr } = req.query;
 
     if (!address || typeof address !== "string") {
       return res
@@ -96,27 +96,53 @@ router.get("/", readRateLimit, async (req, res) => {
         .json({ error: "address query parameter is required" });
     }
 
-    let query = "SELECT * FROM shipments";
+    const limit = Math.min(parseInt(limitStr as string) || 20, 50);
     const params: any[] = [];
 
+    let whereClause: string;
     if (role === "driver") {
-      query +=
-        " WHERE driver_id = (SELECT id FROM users WHERE stellar_address = $1)";
       params.push(address);
+      whereClause = `WHERE u2.stellar_address = $1`;
     } else if (role === "shipper") {
-      query +=
-        " WHERE shipper_id = (SELECT id FROM users WHERE stellar_address = $1)";
       params.push(address);
+      whereClause = `WHERE u1.stellar_address = $1`;
     } else {
-      query +=
-        " WHERE shipper_id = (SELECT id FROM users WHERE stellar_address = $1) OR driver_id = (SELECT id FROM users WHERE stellar_address = $1)";
       params.push(address);
+      whereClause = `WHERE u1.stellar_address = $1 OR u2.stellar_address = $1`;
     }
 
-    query += " ORDER BY created_at DESC LIMIT 50";
+    // Cursor-based pagination
+    let cursorClause = "";
+    if (cursor) {
+      params.push(cursor);
+      cursorClause = `AND s.created_at < (SELECT created_at FROM shipments WHERE shipment_id = $${params.length})`;
+    }
 
-    const result = await pool.query(query, params);
-    res.json({ shipments: result.rows });
+    params.push(limit + 1); // fetch one extra to detect hasMore
+
+    const result = await pool.query(
+      `SELECT s.shipment_id, s.origin, s.destination, s.amount, s.status,
+              s.cargo_description, s.cargo_weight_kg, s.tx_hash,
+              s.created_at, s.updated_at,
+              u1.stellar_address AS shipper_stellar_address,
+              u2.stellar_address AS driver_stellar_address
+       FROM shipments s
+       LEFT JOIN users u1 ON s.shipper_id = u1.id
+       LEFT JOIN users u2 ON s.driver_id = u2.id
+       ${whereClause}
+       ${cursorClause}
+       ORDER BY s.created_at DESC
+       LIMIT $${params.length}`,
+      params
+    );
+
+    const hasMore = result.rows.length > limit;
+    const shipments = hasMore ? result.rows.slice(0, limit) : result.rows;
+
+    res.json({
+      shipments,
+      next_cursor: hasMore ? shipments[shipments.length - 1]?.shipment_id : null,
+    });
   } catch (err) {
     log.error({ err }, "Error listing shipments");
     res.status(500).json({ error: "Internal server error" });
@@ -128,7 +154,10 @@ router.get("/:shipment_id", readRateLimit, async (req, res) => {
   try {
     const { shipment_id } = req.params;
     const result = await pool.query(
-      `SELECT s.*,
+      `SELECT s.shipment_id, s.origin, s.destination, s.amount, s.status,
+              s.cargo_description, s.cargo_weight_kg, s.contract_address,
+              s.tx_hash, s.proof_of_delivery_url, s.pickup_date, s.delivery_date,
+              s.created_at, s.updated_at,
               u1.stellar_address AS shipper_stellar_address,
               u2.stellar_address AS driver_stellar_address
        FROM shipments s
@@ -158,28 +187,29 @@ router.post("/", writeRateLimit, async (req, res) => {
     const randomBytes = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
     const shipmentId = `SHIP-${Date.now()}-${randomBytes}`;
 
-    // Upsert users
-    await pool.query(
-      `INSERT INTO users (stellar_address, role) VALUES ($1, 'shipper')
-       ON CONFLICT (stellar_address) DO NOTHING`,
-      [body.shipper_address]
-    );
-
-    await pool.query(
-      `INSERT INTO users (stellar_address, role) VALUES ($1, 'driver')
-       ON CONFLICT (stellar_address) DO NOTHING`,
-      [body.driver_address]
-    );
-
-    // Insert shipment record
+    // Upsert both users + insert shipment in 1 CTE query
     const insertResult = await pool.query(
-      `INSERT INTO shipments (shipment_id, shipper_id, driver_id, origin, destination, cargo_description, cargo_weight_kg, amount, status)
-       VALUES ($1, (SELECT id FROM users WHERE stellar_address = $2), (SELECT id FROM users WHERE stellar_address = $3), $4, $5, $6, $7, $8, 'created')
+      `WITH
+        upsert_shipper AS (
+          INSERT INTO users (stellar_address, role) VALUES ($1, 'shipper')
+          ON CONFLICT (stellar_address) DO NOTHING
+          RETURNING id
+        ),
+        upsert_driver AS (
+          INSERT INTO users (stellar_address, role) VALUES ($2, 'driver')
+          ON CONFLICT (stellar_address) DO NOTHING
+          RETURNING id
+        )
+       INSERT INTO shipments (shipment_id, shipper_id, driver_id, origin, destination, cargo_description, cargo_weight_kg, amount, status)
+       VALUES ($3,
+         COALESCE((SELECT id FROM upsert_shipper), (SELECT id FROM users WHERE stellar_address = $1)),
+         COALESCE((SELECT id FROM upsert_driver), (SELECT id FROM users WHERE stellar_address = $2)),
+         $4, $5, $6, $7, $8, 'created')
        RETURNING id`,
       [
-        shipmentId,
         body.shipper_address,
         body.driver_address,
+        shipmentId,
         body.origin,
         body.destination,
         body.cargo_description || null,
@@ -275,17 +305,16 @@ router.post("/:shipment_id/submit", writeRateLimit, async (req, res) => {
 
     const newStatus = body.status || "created";
 
-    // Update shipment with tx hash and status
+    // Update shipment + log history in 1 CTE query
     await pool.query(
-      `UPDATE shipments SET tx_hash = $1, status = $2, updated_at = NOW() WHERE shipment_id = $3`,
-      [result.hash, newStatus, shipment_id]
-    );
-
-    // Log history
-    await pool.query(
-      `INSERT INTO shipments_history (shipment_id, status, tx_hash, notes)
-       VALUES ((SELECT id FROM shipments WHERE shipment_id = $1), $2, $3, $4)`,
-      [shipment_id, newStatus, result.hash, `Escrow ${newStatus} on-chain`]
+      `WITH update_shipment AS (
+         UPDATE shipments SET tx_hash = $1, status = $2, updated_at = NOW()
+         WHERE shipment_id = $3
+         RETURNING id
+       )
+       INSERT INTO shipments_history (shipment_id, status, tx_hash, notes)
+       SELECT id, $2, $1, $4 FROM update_shipment`,
+      [result.hash, newStatus, shipment_id, `Escrow ${newStatus} on-chain`]
     );
 
     res.json({
