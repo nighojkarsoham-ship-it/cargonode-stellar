@@ -11,11 +11,21 @@ Smart escrow payments for freight logistics, powered by Stellar and Soroban.
 
 ## Level 4 Submission Proofs
 
-
 - 👥 **10+ User Wallet Interactions Proof**: [PROOF_OF_USERS.md](PROOF_OF_USERS.md)
 - 💬 **User Feedback Summary**: [FEEDBACK_SUMMARY.md](FEEDBACK_SUMMARY.md)
 - 📊 **Monitoring & Analytics**: Pino structured backend logging + [analytics.ts](frontend/src/lib/analytics.ts)
 - 🎥 **Demo Video Link**: *Include live video URL here upon submission*
+
+### Product Screenshots
+
+#### 1. Main Product UI Dashboard
+![CargoNode Main Product UI](docs/screenshots/product_ui.png)
+
+#### 2. Mobile Responsive Design
+![CargoNode Mobile Responsive View](docs/screenshots/mobile_responsive.png)
+
+#### 3. Real-Time Telemetry & Monitoring Setup
+![CargoNode Analytics & Monitoring Setup](docs/screenshots/analytics_setup.png)
 
 ## Architecture
 
