@@ -306,7 +306,7 @@ export default function ShipmentDetailPage() {
             Actions
           </h3>
 
-          {(isDriver || isShipper) && <DetailTokenFunder address={address} />}
+          {address && (isDriver || isShipper) && <DetailTokenFunder address={address} />}
 
           <div className="flex gap-3 flex-wrap">
             {shipment.status === "created" && isDriver && (

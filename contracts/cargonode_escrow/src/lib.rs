@@ -351,9 +351,12 @@ mod tests {
     use super::*;
     use soroban_sdk::{testutils::Address as _, Env, String};
 
-    fn create_test_token(env: &Env) -> Address {
-        let token_contract = env.register(soroban_sdk::token::StellarAssetToken, ());
-        token_contract
+    fn create_test_token(env: &Env, to: &Address, amount: i128) -> Address {
+        let admin = Address::generate(env);
+        let sac = env.register_stellar_asset_contract_v2(admin);
+        let client = soroban_sdk::token::StellarAssetClient::new(env, &sac.address());
+        client.mint(to, &amount);
+        sac.address()
     }
 
     #[test]
@@ -363,7 +366,7 @@ mod tests {
 
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -386,7 +389,7 @@ mod tests {
 
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -406,7 +409,7 @@ mod tests {
 
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -427,7 +430,7 @@ mod tests {
 
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -447,7 +450,7 @@ mod tests {
 
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -468,7 +471,7 @@ mod tests {
 
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -487,7 +490,7 @@ mod tests {
 
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -505,7 +508,7 @@ mod tests {
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
         let wrong_driver = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);
@@ -525,7 +528,7 @@ mod tests {
         let shipper = Address::generate(&env);
         let driver = Address::generate(&env);
         let wrong_shipper = Address::generate(&env);
-        let token = create_test_token(&env);
+        let token = create_test_token(&env, &shipper, 10000);
 
         let contract_id = env.register(CargoNodeEscrow, (shipper.clone(), token));
         let client = CargoNodeEscrowClient::new(&env, &contract_id);

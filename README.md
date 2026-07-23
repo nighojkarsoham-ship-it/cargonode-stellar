@@ -9,6 +9,14 @@ Smart escrow payments for freight logistics, powered by Stellar and Soroban.
 - **Frontend**: [cargonode.vercel.app](https://cargonode.vercel.app) (testnet)
 - **Contract**: [`CAI52UIAHEMT3SNQ2EXOJKHHC2PAGLGURZYNL6HFZJ6LL5KDQFURBQUH`](https://stellar.expert/testnet/contract/CAI52UIAHEMT3SNQ2EXOJKHHC2PAGLGURZYNL6HFZJ6LL5KDQFURBQUH)
 
+## Level 4 Submission Proofs
+
+
+- 👥 **10+ User Wallet Interactions Proof**: [PROOF_OF_USERS.md](PROOF_OF_USERS.md)
+- 💬 **User Feedback Summary**: [FEEDBACK_SUMMARY.md](FEEDBACK_SUMMARY.md)
+- 📊 **Monitoring & Analytics**: Pino structured backend logging + [analytics.ts](frontend/src/lib/analytics.ts)
+- 🎥 **Demo Video Link**: *Include live video URL here upon submission*
+
 ## Architecture
 
 ```

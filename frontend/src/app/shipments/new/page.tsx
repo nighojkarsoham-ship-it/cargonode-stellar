@@ -157,7 +157,7 @@ export default function NewShipmentPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Fund Test Tokens */}
-      <TestTokenFunder address={address} />
+      {address && <TestTokenFunder address={address} />}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-secondary">New Shipment</h1>
         <p className="text-gray-600 mt-1">
