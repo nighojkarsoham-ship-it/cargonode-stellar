@@ -35,11 +35,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Request logging
+// --- Telemetry & Monitoring Counters ---
+let totalRequests = 0;
+let totalErrors = 0;
+let latencySumMs = 0;
+
+// Request logging & metrics middleware
 app.use((req, res, next) => {
   const start = Date.now();
+  totalRequests++;
   res.on("finish", () => {
     const duration = Date.now() - start;
+    latencySumMs += duration;
+    if (res.statusCode >= 400) {
+      totalErrors++;
+    }
     log.info({
       method: req.method,
       url: req.originalUrl,
@@ -60,6 +70,50 @@ app.get("/api/health", (_req, res) => {
     version: "1.0.0",
     network: process.env.STELLAR_NETWORK || "testnet",
   });
+});
+
+// Production System Metrics & Telemetry Monitoring Endpoint
+app.get("/api/metrics", async (_req, res) => {
+  try {
+    const dbRes = await pool.query("SELECT COUNT(*) FROM shipments");
+    const shipmentCount = parseInt(dbRes.rows[0]?.count || "0", 10);
+
+    const mem = process.memoryUsage();
+    const avgLatency = totalRequests > 0 ? (latencySumMs / totalRequests).toFixed(2) : "0.00";
+    const errorRate = totalRequests > 0 ? ((totalErrors / totalRequests) * 100).toFixed(2) : "0.00";
+
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      system: {
+        uptime_seconds: Math.floor(process.uptime()),
+        memory_heap_used_mb: (mem.heapUsed / 1024 / 1024).toFixed(2),
+        memory_rss_mb: (mem.rss / 1024 / 1024).toFixed(2),
+        node_version: process.version,
+        platform: process.platform,
+      },
+      telemetry: {
+        total_requests: totalRequests,
+        total_errors: totalErrors,
+        error_rate_pct: parseFloat(errorRate),
+        avg_latency_ms: parseFloat(avgLatency),
+      },
+      database: {
+        pool_total_connections: pool.totalCount,
+        pool_idle_connections: pool.idleCount,
+        pool_waiting_clients: pool.waitingCount,
+        total_shipments_stored: shipmentCount,
+      },
+      network: {
+        stellar_network: process.env.STELLAR_NETWORK || "testnet",
+        soroban_rpc_url: process.env.SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org",
+        escrow_contract: process.env.ESCROW_CONTRACT_ID || "CAI52UIAHEMT3SNQ2EXOJKHHC2PAGLGURZYNL6HFZJ6LL5KDQFURBQUH",
+      },
+    });
+  } catch (err: any) {
+    log.error({ err: err.message }, "Metrics check failed");
+    res.status(500).json({ error: "Failed to collect system metrics", detail: err.message });
+  }
 });
 
 // Debug: test DB connection and tables

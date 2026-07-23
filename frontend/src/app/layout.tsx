@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "CargoNode - Smart Escrow Payments for Freight",
@@ -49,6 +50,13 @@ export default function RootLayout({
                     Shipments
                   </a>
                   <a
+                    href="/analytics"
+                    className="text-gray-600 hover:text-primary font-medium text-sm sm:text-base flex items-center gap-1"
+                  >
+                    <span>📊</span>
+                    <span className="hidden sm:inline">Monitoring</span>
+                  </a>
+                  <a
                     href="/shipments/new"
                     className="btn-primary text-sm !px-3 !py-2 sm:!px-4"
                   >
@@ -71,6 +79,9 @@ export default function RootLayout({
             </div>
           </footer>
         </div>
+
+        {/* Vercel Cloud Analytics */}
+        <Analytics />
 
         {/* Feedback Widget */}
         <FeedbackWidget />
