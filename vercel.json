@@ -1,5 +1,3 @@
 {
-  "buildCommand": "npm --prefix frontend run build || npm run build",
-  "installCommand": "npm --prefix frontend install || npm install",
   "framework": "nextjs"
 }

@@ -37,9 +37,12 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [eventsLogs, setEventLogs] = useState<any[]>([]);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+
   const fetchMetrics = async () => {
     try {
-      const res = await fetch("/api/metrics");
+      const metricsUrl = API_BASE.replace(/\/api\/?$/, "/api/metrics");
+      const res = await fetch(metricsUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setMetrics(data);
